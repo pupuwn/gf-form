@@ -1,7 +1,8 @@
 'use client';
-import * as zod from 'zod';
+import * as z from 'zod';
 import Link from 'next/link';
 import Image from 'next/image';
+import React, { useEffect, useState } from 'react';
 import Logo from '@/public/logo-gf.png';
 import HomeIcon from '@/public/home.svg';
 import { useForm } from 'react-hook-form';
@@ -13,48 +14,177 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
+import { useParams } from 'next/navigation';
 
+// Definisi untuk bentuk kolaborasi
 const bentuk_kolaborasi = [
   {
     id: 'speaker / narasumber',
-    label: 'Speaker / Narasumber',
+    label: {
+      id: 'Speaker / Narasumber',
+      en: 'Speaker / Resource Person',
+    },
   },
   {
     id: 'media partner',
-    label: 'Media Partner',
+    label: {
+      id: 'Media Partner',
+      en: 'Media Partner',
+    },
   },
   {
     id: 'donasi',
-    label: 'Donasi',
+    label: {
+      id: 'Donasi',
+      en: 'Donation',
+    },
   },
   {
     id: 'eco ranger program',
-    label: 'Eco Ranger Program',
+    label: {
+      id: 'Eco Ranger Program',
+      en: 'Eco Ranger Program',
+    },
   },
   {
     id: 'aksi clean up',
-    label: 'Aksi Clean Up',
+    label: {
+      id: 'Aksi Clean Up',
+      en: 'Clean Up Action',
+    },
   },
   {
     id: 'yang lain',
-    label: 'Yang Lain',
+    label: {
+      id: 'Yang Lain',
+      en: 'Others',
+    },
   },
 ] as const;
 
-const formSchema = zod.object({
-  nama: zod.string().min(1, { message: 'Nama is required' }),
-  perusahaan: zod.string().min(1, { message: 'Perusahaan is required' }),
-  posisi: zod.string().min(1, { message: 'Posisi is required' }),
-  bentuk_kolaborasi: zod.array(zod.string()).min(1, { message: 'Bentuk Kolaborasi is required' }),
-  evaluasi_1: zod.string().min(1, { message: 'Evaluasi Kolaborasi is required' }),
-  evaluasi_2: zod.string().min(1, { message: 'Evaluasi Kolaborasi is required' }),
-  evaluasi_3: zod.string().min(1, { message: 'Evaluasi Kolaborasi is required' }),
-  dampak_1: zod.string().min(1, { message: 'Dampak is required' }),
-  dampak_2: zod.string().min(1, { message: 'Dampak is required' }),
-  dampak_3: zod.string().min(1, { message: 'Dampak is required' }),
+// Konten berdasarkan bahasa
+const content = {
+  id: {
+    header: {
+      link: 'Kembali ke Halaman Kerja Sama',
+      backButton: 'Kembali ke Halaman Utama',
+    },
+    title: 'Formulir Umpan Balik Kolaborasi 📝',
+    description:
+      'Dear Semua Partner 💙 Terima kasih telah berkolaborasi dengan Greeneration Foundation. Kami sangat menghargai kontribusi dan dukungan yang telah diberikan. Untuk terus meningkatkan kualitas kerja sama dan memberikan pengalaman yang lebih baik di masa mendatang, kami ingin mendengar pendapat Anda. Mohon luangkan beberapa menit untuk mengisi formulir umpan balik ini. Setiap saran dan masukan sangat berarti bagi kami dalam membangun kolaborasi yang lebih efektif dan berdampak. Terima kasih atas waktu dan perhatiannya! 😊 Salam Lestari, Greeneration Foundation',
+    form: {
+      nama: 'Nama',
+      perusahaan: 'Perusahaan',
+      posisi: 'Posisi',
+      bentuk_kolaborasi: 'Bentuk Kolaborasi',
+      other_placeholder: 'Tulis bentuk kolaborasi lain...',
+      evaluasi: {
+        title: 'Evaluasi Kolaborasi',
+        question1: 'Bagaimana penilaian Anda terhadap keseluruhan pengalaman bekerja sama dengan kami?',
+        question2: 'Seberapa efektif komunikasi dan koordinasi yang dilakukan selama kolaborasi?',
+        question3: 'Apakah informasi dan dukungan yang diberikan sebelum dan selama acara sudah memadai?',
+        low: 'Sangat Tidak Puas',
+        high: 'Sangat Puas',
+      },
+      dampak: {
+        title: 'Dampak & Manfaat',
+        question1: 'Apakah tujuan organisasi Anda sudah tercapai melalui kolaborasi yang dijalankan?',
+        question2: 'Saran atau masukan selama berkolaborasi dengan Greeneration Foundation',
+        question3: 'Apakah Anda bersedia berkolaborasi kembali dengan kami di kesempatan mendatang?',
+        placeholder1: 'Evaluasi Kolaborasi',
+        placeholder2: 'Saran atau Masukan',
+        option1: 'Ya',
+        option2: 'Tidak',
+        option3: 'Mungkin',
+      },
+      submit: 'Kirim',
+      required: '*',
+    },
+    footer: 'Yayasan Greeneration Indonesia © 2021 | All Rights Reserved, Designed By Yayasan Greeneration Indonesia',
+    alerts: {
+      success: 'Feedback berhasil dikirim!',
+      error: 'Terjadi kesalahan saat mengirim feedback',
+    },
+  },
+  en: {
+    header: {
+      link: 'Back to Home Page',
+      backButton: 'Back to Main Page',
+    },
+    title: 'Collaboration Feedback Form 📝',
+    description:
+      'Dear All Partners 💙 Thank you for collaborating with Greeneration Foundation. We greatly appreciate the contribution and support you have provided. To continuously improve the quality of our cooperation and provide a better experience in the future, we would like to hear your opinions. Please take a few minutes to fill out this feedback form. Every suggestion and input is very meaningful for us in building more effective and impactful collaborations. Thank you for your time and attention! 😊 Best regards, Greeneration Foundation',
+    form: {
+      nama: 'Name',
+      perusahaan: 'Company',
+      posisi: 'Position',
+      bentuk_kolaborasi: 'Type of Collaboration',
+      other_placeholder: 'Write other collaboration type...',
+      evaluasi: {
+        title: 'Collaboration Evaluation',
+        question1: 'How would you rate your overall experience working with us?',
+        question2: 'How effective was the communication and coordination during the collaboration?',
+        question3: 'Was the information and support provided before and during the event adequate?',
+        low: 'Very Dissatisfied',
+        high: 'Very Satisfied',
+      },
+      dampak: {
+        title: 'Impact & Benefits',
+        question1: "Have your organization's goals been achieved through this collaboration?",
+        question2: 'Suggestions or feedback while collaborating with Greeneration Foundation',
+        question3: 'Would you be willing to collaborate with us again in the future?',
+        placeholder1: 'Collaboration Evaluation',
+        placeholder2: 'Suggestions or Feedback',
+        option1: 'Yes',
+        option2: 'No',
+        option3: 'Maybe',
+      },
+      submit: 'Submit',
+      required: '*',
+    },
+    footer: 'Yayasan Greeneration Indonesia © 2021 | All Rights Reserved, Designed By Yayasan Greeneration Indonesia',
+    alerts: {
+      success: 'Feedback successfully sent!',
+      error: 'An error occurred while sending feedback',
+    },
+  },
+};
+
+const formSchema = z.object({
+  nama: z.string().min(1, { message: 'Nama is required' }),
+  perusahaan: z.string().min(1, { message: 'Perusahaan is required' }),
+  posisi: z.string().min(1, { message: 'Posisi is required' }),
+  bentuk_kolaborasi: z.array(z.string()).min(1, { message: 'Bentuk Kolaborasi is required' }),
+  evaluasi_1: z.string().min(1, { message: 'Evaluasi Kolaborasi is required' }),
+  evaluasi_2: z.string().min(1, { message: 'Evaluasi Kolaborasi is required' }),
+  evaluasi_3: z.string().min(1, { message: 'Evaluasi Kolaborasi is required' }),
+  dampak_1: z.string().min(1, { message: 'Dampak is required' }),
+  dampak_2: z.string().min(1, { message: 'Dampak is required' }),
+  dampak_3: z.string().min(1, { message: 'Dampak is required' }),
 });
 
 export function FeedbackForm() {
+  const params = useParams();
+  
+  const [lang, setLang] = useState<'id' | 'en'>('id');
+  
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path.includes('/en/') || path.endsWith('/en')) {
+      setLang('en');
+    }
+    
+    const parentElement = document.querySelector('[data-lang="en"]');
+    if (parentElement) {
+      setLang('en');
+    }
+    
+    if (params?.lang === 'en') {
+      setLang('en');
+    }
+  }, [params]);
+
+  const [otherValue, setOtherValue] = useState('');
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -72,20 +202,36 @@ export function FeedbackForm() {
   });
 
   const handleSubmit = async (data: z.infer<typeof formSchema>) => {
-    try {
-      const res = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-
-      if (!res.ok) throw new Error('Gagal menyimpan feedback');
-      alert('Feedback berhasil dikirim!');
-      form.reset();
-    } catch (error) {
-      alert('Terjadi kesalahan saat mengirim feedback');
+  try {
+    let dataToSend = { ...data };
+    
+    if (data.bentuk_kolaborasi.includes('yang lain') && otherValue.trim() !== '') {
+      dataToSend.bentuk_kolaborasi = data.bentuk_kolaborasi.map(
+        (item) => (item === 'yang lain' ? `Yang Lain: ${otherValue}` : item)
+      );
     }
-  };
+    
+    dataToSend.path = 'Sheet1'; 
+    
+    const res = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dataToSend),
+    });
+    
+    const responseText = await res.text();
+    console.log('Server response:', responseText);
+    
+    if (!res.ok) throw new Error(`${content[lang].alerts.error}: ${responseText}`);
+    
+    alert(content[lang].alerts.success);
+    form.reset();
+    setOtherValue(''); 
+  } catch (error) {
+    console.error('Submit error:', error);
+    alert(`${content[lang].alerts.error}: ${error.message}`);
+  }
+};
 
   return (
     <section className="flex min-h-screen flex-col items-center justify-between">
@@ -97,7 +243,7 @@ export function FeedbackForm() {
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
                   <div className="hidden lg:flex">
-                    <Link href="/">Kembali ke Halaman Kerja Sama</Link>
+                    <Link href="/">{content[lang].header.link}</Link>
                   </div>
                 </BreadcrumbLink>
               </BreadcrumbItem>
@@ -110,17 +256,13 @@ export function FeedbackForm() {
         <div className="mt-5 pr-5">
           <Button onClick={() => (window.location.href = 'https://greeneration.org/')}>
             <Image src={HomeIcon} alt="Icon" width={10} height={10} />
-            <span className="hidden lg:flex">Kembali ke Halaman Utama</span>
+            <span className="hidden lg:flex">{content[lang].header.backButton}</span>
           </Button>
         </div>
       </div>
       <div className="flex flex-col items-center p-5 lg:mb-20 lg:w-2xl">
-        <h1 className="text-3xl font-bold text-center">Collaboration Feedback 📝</h1>
-        <p className="text-center mt-4 text-black/60">
-          Dear All Partner 💙 Terima kasih telah berkolaborasi dengan Greeneration Foundation. Kami sangat menghargai kontribusi dan dukungan yang telah diberikan. Untuk terus meningkatkan kualitas kerja sama dan memberikan pengalaman yang
-          lebih baik di masa mendatang, kami ingin mendengar pendapat Anda. Mohon luangkan beberapa menit untuk mengisi formulir umpan balik ini. Setiap saran dan masukan sangat berarti bagi kami dalam membangun kolaborasi yang lebih
-          efektif dan berdampak. Terima kasih atas waktu dan perhatiannya! 😊 Salam Lestari, Greeneration Foundation
-        </p>
+        <h1 className="text-3xl font-bold text-center">{content[lang].title}</h1>
+        <p className="text-center mt-4 text-black/60">{content[lang].description}</p>
       </div>
 
       {/* Form Section */}
@@ -133,10 +275,11 @@ export function FeedbackForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Nama<span className="text-red-500">*</span>
+                    {content[lang].form.nama}
+                    <span className="text-red-500">{content[lang].form.required}</span>
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="Nama" type="text" {...field} />
+                    <Input placeholder={content[lang].form.nama} type="text" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -148,10 +291,11 @@ export function FeedbackForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Perusahaan<span className="text-red-500">*</span>
+                    {content[lang].form.perusahaan}
+                    <span className="text-red-500">{content[lang].form.required}</span>
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="Perusahaan" type="text" {...field} />
+                    <Input placeholder={content[lang].form.perusahaan} type="text" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -163,10 +307,11 @@ export function FeedbackForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Posisi<span className="text-red-500">*</span>
+                    {content[lang].form.posisi}
+                    <span className="text-red-500">{content[lang].form.required}</span>
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="Posisi" type="text" {...field} />
+                    <Input placeholder={content[lang].form.posisi} type="text" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -179,27 +324,42 @@ export function FeedbackForm() {
                 <FormItem>
                   <div className="mb-4">
                     <FormLabel>
-                      Bentuk Kolaborasi<span className="text-red-500">*</span>
+                      {content[lang].form.bentuk_kolaborasi}
+                      <span className="text-red-500">{content[lang].form.required}</span>
                     </FormLabel>
                   </div>
-                  {bentuk_kolaborasi.map((bentuk_kolaborasi) => (
+                  {bentuk_kolaborasi.map((bentuk) => (
                     <FormField
-                      key={bentuk_kolaborasi.id}
+                      key={bentuk.id}
                       control={form.control}
                       name="bentuk_kolaborasi"
                       render={({ field }) => {
+                        const checked = field.value?.includes(bentuk.id);
                         return (
-                          <FormItem key={bentuk_kolaborasi.id} className="flex flex-row items-start space-x-3 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value?.includes(bentuk_kolaborasi.id)}
-                                onCheckedChange={(checked) => {
-                                  return checked ? field.onChange([...(field.value as string[]), bentuk_kolaborasi.id]) : field.onChange((field.value as string[])?.filter((value: string) => value !== bentuk_kolaborasi.id));
-                                }}
-                              />
-                            </FormControl>
-                            <FormLabel className="font-normal">{bentuk_kolaborasi.label}</FormLabel>
-                          </FormItem>
+                          <React.Fragment key={bentuk.id}>
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      field.onChange([...(field.value as string[]), bentuk.id]);
+                                    } else {
+                                      field.onChange((field.value as string[]).filter((v) => v !== bentuk.id));
+                                      if (bentuk.id === 'yang lain') setOtherValue(''); // reset input jika uncheck
+                                    }
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal">{bentuk.label[lang]}</FormLabel>
+                            </FormItem>
+                            {/* Tampilkan input jika "Yang Lain" dicentang */}
+                            {bentuk.id === 'yang lain' && checked && (
+                              <div className="ml-8 mt-2">
+                                <Input placeholder={content[lang].form.other_placeholder} value={otherValue} onChange={(e) => setOtherValue(e.target.value)} />
+                              </div>
+                            )}
+                          </React.Fragment>
                         );
                       }}
                     />
@@ -217,11 +377,12 @@ export function FeedbackForm() {
               name="evaluasi_1"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xl font-bold">Evaluasi Kolaborasi</FormLabel>
+                  <FormLabel className="text-xl font-bold">{content[lang].form.evaluasi.title}</FormLabel>
                   <FormControl>
                     <div>
                       <p className="mb-4">
-                        Bagaimana penilaian Anda terhadap keseluruhan pengalaman bekerja sama dengan kami?<span className="text-red-500">*</span>
+                        {content[lang].form.evaluasi.question1}
+                        <span className="text-red-500">{content[lang].form.required}</span>
                       </p>
                       <RadioGroup value={field.value} onValueChange={field.onChange}>
                         <div className="grid grid-cols-5">
@@ -247,8 +408,8 @@ export function FeedbackForm() {
                           </div>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <p>Sangat Tidak Puas</p>
-                          <p>Sangat Puas</p>
+                          <p>{content[lang].form.evaluasi.low}</p>
+                          <p>{content[lang].form.evaluasi.high}</p>
                         </div>
                       </RadioGroup>
                     </div>
@@ -267,7 +428,8 @@ export function FeedbackForm() {
                   <FormControl>
                     <div>
                       <p className="mb-4">
-                        Seberapa efektif komunikasi dan koordinasi yang dilakukan selama kolaborasi?<span className="text-red-500">*</span>
+                        {content[lang].form.evaluasi.question2}
+                        <span className="text-red-500">{content[lang].form.required}</span>
                       </p>
                       <RadioGroup value={field.value} onValueChange={field.onChange}>
                         <div className="grid grid-cols-5">
@@ -293,8 +455,8 @@ export function FeedbackForm() {
                           </div>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <p>Sangat Tidak Puas</p>
-                          <p>Sangat Puas</p>
+                          <p>{content[lang].form.evaluasi.low}</p>
+                          <p>{content[lang].form.evaluasi.high}</p>
                         </div>
                       </RadioGroup>
                     </div>
@@ -313,7 +475,8 @@ export function FeedbackForm() {
                   <FormControl>
                     <div>
                       <p className="mb-4">
-                        Apakah informasi dan dukungan yang diberikan sebelum dan selama acara sudah memadai?<span className="text-red-500">*</span>
+                        {content[lang].form.evaluasi.question3}
+                        <span className="text-red-500">{content[lang].form.required}</span>
                       </p>
                       <RadioGroup value={field.value} onValueChange={field.onChange}>
                         <div className="grid grid-cols-5">
@@ -339,8 +502,8 @@ export function FeedbackForm() {
                           </div>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <p>Sangat Tidak Puas</p>
-                          <p>Sangat Puas</p>
+                          <p>{content[lang].form.evaluasi.low}</p>
+                          <p>{content[lang].form.evaluasi.high}</p>
                         </div>
                       </RadioGroup>
                     </div>
@@ -358,13 +521,14 @@ export function FeedbackForm() {
               name="dampak_1"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xl font-bold">Dampak & Manfaat </FormLabel>
+                  <FormLabel className="text-xl font-bold">{content[lang].form.dampak.title}</FormLabel>
                   <FormControl>
                     <div className="mb-6">
                       <p className="mb-4">
-                        Apakah tujuan organisasi Anda sudah tercapai melalui kolaborasi yang dijalankan?<span className="text-red-500">*</span>
+                        {content[lang].form.dampak.question1}
+                        <span className="text-red-500">{content[lang].form.required}</span>
                       </p>
-                      <Input placeholder="Evaluasi Kolaborasi" type="text" {...field} />
+                      <Input placeholder={content[lang].form.dampak.placeholder1} type="text" {...field} />
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -379,9 +543,10 @@ export function FeedbackForm() {
                   <FormControl>
                     <div className="mb-6">
                       <p className="mb-4">
-                        Saran atau masukan selama berkolaborasi dengan Greeneration Foundation<span className="text-red-500">*</span>
+                        {content[lang].form.dampak.question2}
+                        <span className="text-red-500">{content[lang].form.required}</span>
                       </p>
-                      <Input placeholder="Saran atau Masukan" type="text" {...field} />
+                      <Input placeholder={content[lang].form.dampak.placeholder2} type="text" {...field} />
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -396,21 +561,22 @@ export function FeedbackForm() {
                   <FormControl>
                     <div>
                       <p className="mb-4">
-                        Apakah Anda bersedia berkolaborasi kembali dengan kami di kesempatan mendatang?<span className="text-red-500">*</span>
+                        {content[lang].form.dampak.question3}
+                        <span className="text-red-500">{content[lang].form.required}</span>
                       </p>
                       <RadioGroup value={field.value} onValueChange={field.onChange}>
                         <div className="grid grid-cols-5">
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="Ya" id="option-one" />
-                            <Label htmlFor="option-one">Ya</Label>
+                            <Label htmlFor="option-one">{content[lang].form.dampak.option1}</Label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="Tidak" id="option-two" />
-                            <Label htmlFor="option-two">Tidak</Label>
+                            <Label htmlFor="option-two">{content[lang].form.dampak.option2}</Label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="Mungkin" id="option-three" />
-                            <Label htmlFor="option-three">Mungkin</Label>
+                            <Label htmlFor="option-three">{content[lang].form.dampak.option3}</Label>
                           </div>
                         </div>
                       </RadioGroup>
@@ -423,11 +589,19 @@ export function FeedbackForm() {
           </div>
           <div className="mt-8 pl-5">
             <Button className="w-full" type="submit">
-              Submit
+              {content[lang].form.submit}
             </Button>
           </div>
         </form>
       </Form>
+
+      {/* Footer Section */}
+      <footer className="flex flex-col items-center justify-center bg-[#f8f9fa] mt-10">
+        <div className="mt-5 flex justify-center mb-5">
+          <Image src={Logo} alt="Logo" width={150} height={200} />
+        </div>
+        <p className="text-lg text-black/60 mb-10 text-center">{content[lang].footer}</p>
+      </footer>
     </section>
   );
 }

@@ -1,38 +1,63 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { google } from 'googleapis';
-import path from 'path';
-import fs from 'fs';
+import { NextResponse } from 'next/server';
 
-const SHEET_ID = '1_loTL-vvQhDu4LcxLRJCidO7Kix21rHazWggpc3M33s'; // Ganti dengan Sheet ID kamu
-
-async function appendToSheet(data: any) {
-  const credentialsPath = path.join(process.cwd(), 'lib', 'google-credentials.json');
-  const credentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
-
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
-
-  const sheets = google.sheets({ version: 'v4', auth });
-
-  const values = [[data.nama, data.perusahaan, data.posisi, (data.bentuk_kolaborasi || []).join(', '), data.evaluasi_1, data.evaluasi_2, data.evaluasi_3, data.dampak_1, data.dampak_2, data.dampak_3, new Date().toISOString()]];
-
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: SHEET_ID,
-    range: 'Feedback',
-    valueInputOption: 'USER_ENTERED',
-    requestBody: { values },
-  });
-}
-
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const data = await req.json();
-    await appendToSheet(data);
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error(error); // Tambahkan ini
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    // Parsing body request
+    const body = await req.json();
+    console.log('Received data:', body);
+
+    // Pastikan path ada dalam data
+    if (!body.path) {
+      console.error('Missing path parameter');
+      return NextResponse.json({ success: false, message: 'Missing path parameter' }, { status: 400 });
+    }
+
+    const formattedData = {
+      path: body.path,
+      nama: body.nama || '',
+      perusahaan: body.perusahaan || '',
+      posisi: body.posisi || '',
+
+      bentuk_kolaborasi: Array.isArray(body.bentuk_kolaborasi) ? body.bentuk_kolaborasi.join(', ') : body.bentuk_kolaborasi || '',
+      evaluasi_1: body.evaluasi_1 || '',
+      evaluasi_2: body.evaluasi_2 || '',
+      evaluasi_3: body.evaluasi_3 || '',
+      dampak_1: body.dampak_1 || '',
+      dampak_2: body.dampak_2 || '',
+      dampak_3: body.dampak_3 || '',
+    };
+
+    const scriptUrl = process.env.GOOGLE_SCRIPT_URL;
+
+    if (!scriptUrl) {
+      console.error('GOOGLE_SCRIPT_URL env variable not set');
+      return NextResponse.json({ success: false, message: 'Server configuration error' }, { status: 500 });
+    }
+
+    console.log('Sending data to Google Script:', formattedData);
+    console.log('Script URL:', scriptUrl);
+
+    const response = await fetch(scriptUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams(formattedData).toString(),
+    });
+
+    const responseText = await response.text();
+    console.log('Google Script response:', responseText);
+
+    if (!response.ok) {
+      throw new Error(`Google Script error: ${responseText}`);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: responseText,
+    });
+  } catch (error: any) {
+    console.error('Error in feedback API:', error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
